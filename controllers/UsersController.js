@@ -1,7 +1,4 @@
-/* eslint-disable no-unused-vars */
-
 import sha1 from 'sha1';
-import { ObjectId } from 'mongodb';
 import dbClient from '../utils/db';
 
 class UsersController {
@@ -9,36 +6,36 @@ class UsersController {
     const { email, password } = req.body;
 
     if (!email) {
-      return res.status(400).json({ error: 'Missing email' });
+      res.status(400).json({ error: 'Missing email' });
+      return;
     }
 
     if (!password) {
-      return res.status(400).json({ error: 'Missing password' });
+      res.status(400).json({ error: 'Missing password' });
+      return;
     }
 
-    const usersCollection = dbClient.db.collection('users');
+    try {
+      // Check if user already exists
+      const userExist = await dbClient.db.collection('users').findOne({ email });
+      if (userExist) {
+        res.status(400).json({ error: 'Already exist' });
+        return;
+      }
 
-    // Check if user already exists
-    const existingUser = await usersCollection.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: 'Already exist' });
+      // Create new user
+      const hashedPassword = sha1(password);
+      const result = await dbClient.db.collection('users').insertOne({
+        email,
+        password: hashedPassword,
+      });
+
+      // Return the new user's ID and email
+      const id = result.insertedId.toString();
+      res.status(201).json({ id, email });
+    } catch (err) {
+      res.status(500).json({ error: 'Internal Server Error' });
     }
-
-    // Hash the password
-    const hashedPassword = sha1(password);
-
-    // Insert the new user
-    const result = await usersCollection.insertOne({
-      email,
-      password: hashedPassword,
-    });
-
-    // Return the new user's ID and email
-    const user = {
-      id: result.insertedId.toString(),
-      email,
-    };
-    return res.status(201).json(user);
   }
 }
 
