@@ -1,3 +1,5 @@
+#!/usr/bin/node
+
 const { v4 } = require('uuid');
 const dbClient = require('../utils/db');
 const redisClient = require('../utils/redis');

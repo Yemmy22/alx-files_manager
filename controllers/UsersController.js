@@ -1,42 +1,31 @@
-import sha1 from 'sha1';
-import dbClient from '../utils/db';
+#!/usr/bin/node
+
+const dbClient = require('../utils/db');
 
 class UsersController {
   static async postNew(req, res) {
     const { email, password } = req.body;
-
     if (!email) {
       res.status(400).json({ error: 'Missing email' });
+      res.end();
       return;
     }
-
     if (!password) {
       res.status(400).json({ error: 'Missing password' });
+      res.end();
       return;
     }
-
-    try {
-      // Check if user already exists
-      const userExist = await dbClient.db.collection('users').findOne({ email });
-      if (userExist) {
-        res.status(400).json({ error: 'Already exist' });
-        return;
-      }
-
-      // Create new user
-      const hashedPassword = sha1(password);
-      const result = await dbClient.db.collection('users').insertOne({
-        email,
-        password: hashedPassword,
-      });
-
-      // Return the new user's ID and email
-      const id = result.insertedId.toString();
-      res.status(201).json({ id, email });
-    } catch (err) {
-      res.status(500).json({ error: 'Internal Server Error' });
+    const userExist = await dbClient.userExist(email);
+    if (userExist) {
+      res.status(400).json({ error: 'Already exist' });
+      res.end();
+      return;
     }
+    const user = await dbClient.createUser(email, password);
+    const id = `${user.insertedId}`;
+    res.status(201).json({ id, email });
+    res.end();
   }
 }
 
-export default UsersController;
+module.exports = UsersController;
